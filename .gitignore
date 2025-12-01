@@ -9,8 +9,17 @@ env/
 ENV/
 .venv
 
+# Node
+node_modules/
+dist/
+.cache/
+*.log
+npm-debug.log*
+
 # Environment
 .env
+.env.local
+backend/.env
 
 # IDE
 .vscode/
