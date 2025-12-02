@@ -16,9 +16,11 @@ class ConnectionManager:
             if websocket in self.active_connections[room_code]:
                 self.active_connections[room_code].remove(websocket)
 
-    async def broadcast(self, message: dict, room_code: str):
+    async def broadcast(self, message: dict, room_code: str, exclude: WebSocket = None):
         if room_code in self.active_connections:
             for connection in self.active_connections[room_code]:
+                if connection == exclude:
+                    continue
                 try:
                     await connection.send_json(message)
                 except:
