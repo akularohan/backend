@@ -87,3 +87,33 @@ async def leave_room(room_name: str, username: str):
         {"$pull": {"users": username}}
     )
     return {"message": "Left room successfully"}
+
+@router.get("/stats")
+async def get_stats():
+    db = await get_database()
+    rooms_collection = db.rooms if hasattr(db, 'rooms') else db["rooms"]
+    messages_collection = db.messages if hasattr(db, 'messages') else db["messages"]
+    
+    # Get all active rooms (not expired)
+    active_rooms = []
+    total_users = 0
+    async for room in rooms_collection.find({}):
+        if datetime.utcnow() <= room["expire_at"]:
+            active_rooms.append({
+                "name": room["name"],
+                "users": room.get("users", []),
+                "user_count": len(room.get("users", [])),
+                "created_at": room["created_at"].isoformat(),
+                "expire_at": room["expire_at"].isoformat()
+            })
+            total_users += len(room.get("users", []))
+    
+    # Count total messages
+    total_messages = await messages_collection.count_documents({})
+    
+    return {
+        "total_rooms": len(active_rooms),
+        "total_users": total_users,
+        "total_messages": total_messages,
+        "rooms": active_rooms
+    }
