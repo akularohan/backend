@@ -15,15 +15,18 @@ async def websocket_endpoint(websocket: WebSocket, room_name: str, username: str
     # Send message history to the newly connected user
     try:
         history = []
-        async for msg in messages_collection.find({"room_name": room_name}).sort("timestamp", 1):
+        cursor = messages_collection.find({"room_name": room_name}).sort("timestamp", 1)
+        async for msg in cursor:
             history.append({
                 "type": "message",
                 "message_type": msg.get("message_type", "text"),
                 "username": msg["username"],
                 "content": msg["content"],
-                "timestamp": msg["timestamp"].isoformat(),
+                "timestamp": msg["timestamp"].isoformat() if hasattr(msg["timestamp"], 'isoformat') else msg["timestamp"],
                 "reply_to": msg.get("reply_to")
             })
+        
+        print(f"📜 Sending {len(history)} messages from history to {username} in room {room_name}")
         
         # Send history to the connected user
         await websocket.send_json({
@@ -31,7 +34,14 @@ async def websocket_endpoint(websocket: WebSocket, room_name: str, username: str
             "messages": history
         })
     except Exception as e:
-        print(f"Error loading history: {e}")
+        print(f"❌ Error loading history: {e}")
+        import traceback
+        traceback.print_exc()
+        # Send empty history on error
+        await websocket.send_json({
+            "type": "history",
+            "messages": []
+        })
     
     # Notify others that user joined
     await manager.broadcast({
